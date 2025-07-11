@@ -1,23 +1,18 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
-import { db } from "@/lib/firebase";
+import { useState } from "react";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { addDoc, collection } from "firebase/firestore";
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
+
+import { db } from "@/lib/firebase";
+import { useToast } from "@/hooks/use-toast";
+
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 const formSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -30,35 +25,31 @@ type UserFormValues = z.infer<typeof formSchema>;
 export function UserForm() {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+
   const form = useForm<UserFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      firstName: "",
-      lastName: "",
-      email: "",
-    },
+    defaultValues: { firstName: "", lastName: "", email: "" },
   });
 
   const onSubmit = async (data: UserFormValues) => {
     setLoading(true);
     try {
+      // write a new document into `users` with auto-generated ID
       const docRef = await addDoc(collection(db, "users"), {
-        ...data,
-        status: "active",
-        initials: `${data.firstName.charAt(0)}${data.lastName.charAt(0)}`.toUpperCase(),
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        status: "active",  // default status
+        initials: (data.firstName[0] + data.lastName[0]).toUpperCase(),
       });
-      console.log("Document written with ID: ", docRef.id);
-      toast({
-        title: "Success",
-        description: "User added successfully.",
-      });
+      toast({ title: "Success", description: `User added (ID: ${docRef.id})` });
       form.reset();
-    } catch (error) {
-      console.error("Error adding document: ", error);
+    } catch (err) {
+      console.error("Firestore write failed:", err);
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "Failed to add user.",
+        title: "Error adding user",
+        description: "Please try again.",
       });
     } finally {
       setLoading(false);
@@ -66,35 +57,49 @@ export function UserForm() {
   };
 
   return (
-    <Card className="w-full">
+    <Card className="w-full max-w-md mx-auto">
       <CardHeader>
         <CardTitle>Add New User</CardTitle>
-        <CardDescription>
-          Enter the details of the new user below.
-        </CardDescription>
+        <CardDescription>Fill out the form to add a user.</CardDescription>
       </CardHeader>
       <form onSubmit={form.handleSubmit(onSubmit)}>
         <CardContent>
-          <div className="grid w-full items-center gap-4">
-            <div className="flex flex-col space-y-1.5">
+          <div className="space-y-4">
+            <div>
               <Label htmlFor="firstName">First Name</Label>
-              <Input id="firstName" placeholder="John" {...form.register("firstName")} />
-              {form.formState.errors.firstName && <p className="text-destructive text-sm">{form.formState.errors.firstName.message}</p>}
+              <Input id="firstName" {...form.register("firstName")} />
+              {form.formState.errors.firstName && (
+                <p className="text-destructive text-sm">
+                  {form.formState.errors.firstName.message}
+                </p>
+              )}
             </div>
-            <div className="flex flex-col space-y-1.5">
+            <div>
               <Label htmlFor="lastName">Last Name</Label>
-              <Input id="lastName" placeholder="Doe" {...form.register("lastName")} />
-              {form.formState.errors.lastName && <p className="text-destructive text-sm">{form.formState.errors.lastName.message}</p>}
+              <Input id="lastName" {...form.register("lastName")} />
+              {form.formState.errors.lastName && (
+                <p className="text-destructive text-sm">
+                  {form.formState.errors.lastName.message}
+                </p>
+              )}
             </div>
-            <div className="flex flex-col space-y-1.5">
+            <div>
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="john.doe@example.com" {...form.register("email")} />
-              {form.formState.errors.email && <p className="text-destructive text-sm">{form.formState.errors.email.message}</p>}
+              <Input id="email" type="email" {...form.register("email")} />
+              {form.formState.errors.email && (
+                <p className="text-destructive text-sm">
+                  {form.formState.errors.email.message}
+                </p>
+              )}
             </div>
           </div>
         </CardContent>
         <CardFooter>
-          <Button type="submit" disabled={loading} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
+          <Button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
+          >
             {loading ? "Adding..." : "Add User"}
           </Button>
         </CardFooter>
