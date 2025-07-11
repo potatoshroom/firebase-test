@@ -83,6 +83,3 @@ npm run dev
 ```
 
 Visit the given ip and port in your browser to view the app.
-
-```
-```
